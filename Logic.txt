@@ -1,0 +1,35 @@
+Minesweeper Logic
+
+Known
+
+If the number of unknown squares = number of remaining mines, all are mines (end game)
+
+If remaining mines = 0, all unknown are safe (all mines found, but some unknown squares remain)
+
+If box's number - touching mines (check for >0) = number of unknown squares, then unknown are mines
+
+
+If box's number = touching mines, all other unknown squares are not mines
+
+
+
+Questionable
+-Random Start
+Nove to smallest group of unknowns
+-Move to corners
+	-Identify corners 
+		-Number - touching mines = 1
+		-other option is a working number that is surrounded by 3x 0's
+		-Outside corners are always 1's, maybe examine 1's first?
+-after labeling a mine, check to update all touching numbers to possibly move WN to Done
+-after making a move, examine touching squares
+
+If number - touching mines is > touching unknowns, not enough info, move on to next working number
+
+-maybe categorize squares as:
+	-Done
+	-Working Numbers
+	-Unknown
+	-Mine
+
+	
