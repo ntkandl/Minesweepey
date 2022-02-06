@@ -2,14 +2,19 @@ Minesweeper Logic
 
 Known
 
-If the number of unknown squares = number of remaining mines, all are mines (end game)
+X If the number of unknown squares = number of remaining mines, all are mines (end game)
 
-If remaining mines = 0, all unknown are safe (all mines found, but some unknown squares remain)
+X If remaining mines = 0, all unknown are safe (all mines found, but some unknown squares remain)
 
 If box's number - touching mines (check for >0) = number of unknown squares, then unknown are mines
 
 
 If box's number = touching mines, all other unknown squares are not mines
+
+
+When I flag something, all its adjacent cells must have that cell removed from adjacent unknowns 
+and moved to adjacent mines
+
 
 
 
@@ -33,3 +38,7 @@ If number - touching mines is > touching unknowns, not enough info, move on to n
 	-Mine
 
 	
+
+
+
+Current Timing
