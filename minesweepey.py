@@ -10,7 +10,9 @@ import time
 #from skimage.metrics import structural_similarity as ssim
 
 pyautogui.FAILSAFE = True
-pyautogui.PAUSE = 0.5
+pyautogui.PAUSE = 0.1
+
+
 
 
 class MineSweeperWindowFinder():
@@ -41,31 +43,7 @@ class MineSweeperWindowFinder():
         assert(minesweeper_hwnd is not None)
         return minesweeper_hwnd
 
-def window_rect_to_grid_rect(window_rect):
-    """
-    window_rect - tuple of (topleft_x, topleft_y, bottomright_x, bottomright_y)
-    """
-    grid_topleft = (window_rect[0] + 15, window_rect[1] + 101)
-    grid_bottomright = (window_rect[2] - 15, window_rect[3] - 43)
-    grid_rect = (grid_topleft[0], grid_topleft[1], grid_bottomright[0], grid_bottomright[1])
 
-#    image = ImageGrab.grab(grid_rect)
-#    image.show()
-
-    return grid_topleft, grid_bottomright, grid_rect
-
-def window_rect_to_mine_count_rect(window_rect):
-    """
-    window_rect - tuple of (topleft_x, topleft_y, bottomright_x, bottomright_y)
-    Trims window to just game board
-    """
-    grid_topleft = (window_rect[0] + 19, window_rect[1] + 62)
-    grid_bottomright = (window_rect[0] + 58, window_rect[1] + 85)
-    mine_count_rect = (grid_topleft[0], grid_topleft[1], grid_bottomright[0], grid_bottomright[1])
-
-    return mine_count_rect
-# def window_rect_to_smiley_rect(window_rect):
-# def window_rect_to_scoreboard_rect(window_rect):
 
 
 def read_mines(mine_count_rect):
@@ -75,53 +53,120 @@ def read_mines(mine_count_rect):
     tens_rect = (mine_count_rect[0]+ digit_width, mine_count_rect[1], mine_count_rect[0] + 2 * digit_width, mine_count_rect[3])
     ones_rect = (mine_count_rect[0]+ 2 * digit_width, mine_count_rect[1], mine_count_rect[0] + 3 * digit_width, mine_count_rect[3])
 
-    #Read Hundreds Value
-    mc_hundreds_image = ImageGrab.grab(hundreds_rect)
-    mc_hundreds_val = int(image_compare(mc_hundreds_image, 'Mine Count')[0])
+    #Import Mine Count Reference Images
+    MC_ref_images = import_reference_images('Mine Count')
 
+    #Read Hundreds Value
+    mc_hundreds_image = np.array(ImageGrab.grab(hundreds_rect))
+    mc_hundreds_val = int(image_compare(mc_hundreds_image, MC_ref_images)[0])
+    
     #Read Tens Value
-    mc_tens_image = ImageGrab.grab(tens_rect)
-    mc_tens_val = int(image_compare(mc_tens_image, 'Mine Count')[0])
+    mc_tens_image = np.array(ImageGrab.grab(tens_rect))
+    mc_tens_val = int(image_compare(mc_tens_image, MC_ref_images)[0])
 
     #Read Ones Value
-    mc_ones_image = ImageGrab.grab(ones_rect)
-    mc_ones_val = int(image_compare(mc_ones_image, 'Mine Count')[0])
+    mc_ones_image = np.array(ImageGrab.grab(ones_rect))
+    mc_ones_val = int(image_compare(mc_ones_image, MC_ref_images)[0])
 
     mine_count = 100 * mc_hundreds_val + 10 * mc_tens_val + mc_ones_val
-
+    
     return mine_count
 
-def image_compare(image,image_type,output = False):
+
+
+
+def import_reference_images(image_type):
+    """Imports reference images of type 'Tiles' or 'Mine Count' and returns a list of those images"""
+    ref_img_map = cv2.imread(os.path.join("ref_images", "Reference_Images.png"))
+    ref_images = {}
+    #Tile reference image extraction
+    if image_type == 'Tiles':
+        for i in range(9):  #extract ref images of tile states
+            y_top = 23
+            y_bot = 39
+            x_left = 0 + 16*i
+            x_right = 16 + 16*i
+        
+            ref_images[f"{i}"] = ref_img_map[y_top:y_bot, x_left:x_right]
+            
+        y_top = 39
+        y_bot = 55
+        ref_images['F'] = ref_img_map[y_top:y_bot, 0:16]
+        ref_images['M'] = ref_img_map[y_top:y_bot, 16:32]
+        ref_images['U'] = ref_img_map[y_top:y_bot, 32:48]
+
+    elif image_type == 'Mine Count':
+        for i in range(10): #extract ref images of mine count digits
+            y_top = 0
+            y_bot = 23
+            x_left = 0 + (13*i)
+            x_right = 13 + (13*i)
+        
+            ref_images[f"{i}"] = ref_img_map[y_top:y_bot, x_left:x_right]
+ 
+    return ref_images
+
+
+
+
+
+def image_compare(image,ref_images,output = False):
     """
     Compares 'image' with the reference images of image_type (tile or mine count)
     Returns best image key (string)
     """
     #import images of image type to ref_images
-    img_dir = "ref_images"
-    ref_images = {}
-    if image_type == 'Mine Count':
-        for i in range(10):
-            ref_images[f"{i}"] = cv2.imread(os.path.join(img_dir, f"MineCountRef{i}.png"))
+    #img_dir = "ref_images"
+    # ref_images = {}
+    
 
-    if image_type == 'Tiles':
-        for i in range(9):
-            ref_images[f"{i}"] = cv2.imread(os.path.join(img_dir, f"{i}_ref.png"))
-        ref_images['F'] = cv2.imread(os.path.join(img_dir, "F_ref.png"))
-        ref_images['M'] = cv2.imread(os.path.join(img_dir, "Mine_ref.png"))
-        ref_images['U'] = cv2.imread(os.path.join(img_dir, "U_ref.png"))
-        
+    # if image_type == 'Mine Count':
+    #     for i in range(10):
+    #         ref_images[f"{i}"] = cv2.imread(os.path.join(img_dir, f"MineCountRef{i}.png"))
+
+    # if image_type == 'Tiles':
+    #     for i in range(9):
+    #         ref_images[f"{i}"] = cv2.imread(os.path.join(img_dir, f"{i}_ref.png"))
+    #     ref_images['F'] = cv2.imread(os.path.join(img_dir, "F_ref.png"))
+    #     ref_images['M'] = cv2.imread(os.path.join(img_dir, "Mine_ref.png"))
+    #     ref_images['U'] = cv2.imread(os.path.join(img_dir, "U_ref.png"))
+
+    # if first_time == True:
+    #     ref_images_MC = {}
+    #     ref_images_T = {}
+    #     for i in range(10):
+    #         ref_images_MC[f"{i}"] = cv2.imread(os.path.join(img_dir, f"MineCountRef{i}.png"))
+    #     for i in range(9):
+    #         ref_images_T[f"{i}"] = cv2.imread(os.path.join(img_dir, f"{i}_ref.png"))
+    #     ref_images_T['F'] = cv2.imread(os.path.join(img_dir, "F_ref.png"))
+    #     ref_images_T['M'] = cv2.imread(os.path.join(img_dir, "Mine_ref.png"))
+    #     ref_images_T['U'] = cv2.imread(os.path.join(img_dir, "U_ref.png"))
+   
+    # if image_type == 'Mine Count':
+    #     ref_images = ref_images_MC
+    # else:
+    #     ref_images = ref_images_T
+    
+     
+    
     best_err = np.inf
     best_img_key = None 
     
     for image_key in ref_images:
-        imageA = cv2.cvtColor(np.array(image), cv2.COLOR_BGR2GRAY)
-        imageA = imageA * (255.0/imageA.max())
+        #imageA = cv2.cvtColor(np.array(image), cv2.COLOR_BGR2GRAY)
+        #imageA = np.array(image)
+        #imageA = imageA * (255.0/imageA.max())
+        imageA = image  #np.array necessary, but done when grab is done
 
-        imageB = cv2.cvtColor(ref_images[image_key], cv2.COLOR_BGR2GRAY)
-        imageB = imageB * (255.0/imageB.max())
+        #imageB = cv2.cvtColor(ref_images[image_key], cv2.COLOR_BGR2GRAY)
+        imageB =cv2.cvtColor(ref_images[image_key], cv2.COLOR_RGB2BGR)
+        #imageB = imageB * (255.0/imageB.max())
+        
+        
 
         err = mse(imageA, imageB)
-
+        
+        #from IPython import embed; embed()
         if output == True:
             # setup the figure
             fig = plt.figure("MSE comparison")
@@ -148,29 +193,116 @@ def image_compare(image,image_type,output = False):
     
     return best_img_key , best_err
 
+
+
+
 def mse(imageA, imageB):
 	# the 'Mean Squared Error' between the two images is the
 	# sum of the squared difference between the two images;
 	# NOTE: the two images must have the same dimension
-	err = np.sum((imageA.astype("float") - imageB.astype("float")) ** 2)
-	err /= float(imageA.shape[0] * imageA.shape[1])
+    err = np.sum((imageA.astype("float") - imageB.astype("float")) ** 2)
+    err /= float(imageA.shape[0] * imageA.shape[1])
 	
 	# return the MSE, the lower the error, the more "similar"
 	# the two images are
-	return err
+    return err
 
 
 
-def get_tile_image(tile_coords):
+
+def get_tile_image(tile_coords,grid_image,grid_rect):
     minesweeper_grid_pixel_width = int(16)
-    tile_topleft = tile_coords[0] - int(minesweeper_grid_pixel_width / 2), tile_coords[1] - int(minesweeper_grid_pixel_width / 2)
-    tile_botright = tile_coords[0] + int(minesweeper_grid_pixel_width / 2), tile_coords[1] + int(minesweeper_grid_pixel_width / 2)
 
-    image_rect = [*tile_topleft, *tile_botright]
-    tile_image = ImageGrab.grab(image_rect)
+    x_min = tile_coords[0] - grid_rect[0] - int(minesweeper_grid_pixel_width / 2)
+    x_max = tile_coords[0] - grid_rect[0] + int(minesweeper_grid_pixel_width / 2)
+    y_min = tile_coords[1] - grid_rect[1] - int(minesweeper_grid_pixel_width / 2)
+    y_max = tile_coords[1] - grid_rect[1] + int(minesweeper_grid_pixel_width / 2)
 
+    # tile_topleft = tile_coords[0] - int(minesweeper_grid_pixel_width / 2), tile_coords[1] - int(minesweeper_grid_pixel_width / 2)
+    # tile_botright = tile_coords[0] + int(minesweeper_grid_pixel_width / 2), tile_coords[1] + int(minesweeper_grid_pixel_width / 2)
+
+    # image_rect = [*tile_topleft, *tile_botright]
+    # from IPython import embed; embed()
+    tile_image = grid_image[y_min:y_max, x_min:x_max]
+    
     return tile_image
     
+# def window_rect_to_smiley_center(window_rect):
+#     mine_count_rect = (window_rect[0] + 19, window_rect[1] + 62, window_rect[0] + 58, window_rect[1] + 85)
+
+# def window_rect_to_grid_rect(window_rect):
+#     """
+#     window_rect - tuple of (topleft_x, topleft_y, bottomright_x, bottomright_y)
+#     """
+#     grid_topleft = (window_rect[0] + 15, window_rect[1] + 101)
+#     grid_bottomright = (window_rect[2] - 15, window_rect[3] - 43)
+#     grid_rect = (grid_topleft[0], grid_topleft[1], grid_bottomright[0], grid_bottomright[1])
+
+# #    image = ImageGrab.grab(grid_rect)
+# #    image.show()
+
+#     return grid_rect
+
+# def window_rect_to_mine_count_rect(window_rect):
+#     """
+#     window_rect - tuple of (topleft_x, topleft_y, bottomright_x, bottomright_y)
+#     Trims window to just game board
+#     """
+#     grid_topleft = (window_rect[0] + 19, window_rect[1] + 62)
+#     grid_bottomright = (window_rect[0] + 58, window_rect[1] + 85)
+#     mine_count_rect = (grid_topleft[0], grid_topleft[1], grid_bottomright[0], grid_bottomright[1])
+
+#     return mine_count_rect
+
+
+
+def window_to_key_features(window_rect):
+    """
+    window_rect - tuple of (topleft_x, topleft_y, bottomright_x, bottomright_y)
+    Trims window to key features
+    """
+    #Find game grid rectangle
+    trim_top_gg = 101
+    trim_left_gg = 15
+    trim_right_gg = 15
+    trim_bottom_gg = 43
+
+    grid_rect = (
+        window_rect[0] + trim_left_gg,
+        window_rect[1] + trim_top_gg,
+        window_rect[2] - trim_right_gg,
+        window_rect[3] - trim_bottom_gg
+    )
+
+    #Find mine counter rectangle
+    trim_top_mc = 62
+    trim_left_mc = 19
+    mc_width = 39
+    mc_height = 23
+
+    mine_count_rect = (
+        window_rect[0] + trim_left_mc,
+        window_rect[1] + trim_top_mc,
+        window_rect[0] + trim_left_mc + mc_width,
+        window_rect[1] + trim_top_mc + mc_height
+    )
+
+    #Find center of smiley
+    smiley_center = (
+        (window_rect[0] + window_rect[2]) / 2,
+        (mine_count_rect[1] + mine_count_rect[3]) / 2
+    )
+        
+    return grid_rect, mine_count_rect, smiley_center
+
+#This was never used
+# def get_image_opencv(rectangle):
+#     """Captures image on screen, and converts to opencv compatible image."""
+#     image = ImageGrab.grab(rectangle)
+#     image_cv = cv2.cvtColor(np.array(image), cv2.COLOR_BGR2GRAY)
+#     image_cv = image_cv * (255.0/image_cv.max())
+
+#     return image_cv
 
 
 def board_define(game_board):
@@ -179,6 +311,25 @@ def board_define(game_board):
     #game_board[0] contains general info: W and H of board, # of starting mines, mines left(?)
     #game_board[x] for x>0 contains the info for the x grid square starting 1 = top left, moving left to right
     #info includes:adjacent square ID's, value (0,1,2... U(nknown), M(ine)), current image, complete/done (boolean)(is this necessary? U would be only non-complete value)
+
+    window_finder = MineSweeperWindowFinder()
+    minesweeper_hwnd = window_finder.getMineSweeperWindowHandle()
+    win32gui.SetForegroundWindow(minesweeper_hwnd)
+    window_rect = win32gui.GetWindowRect(minesweeper_hwnd)
+    
+    # grid_rect = window_rect_to_grid_rect(window_rect)
+    # mine_count_rect = window_rect_to_mine_count_rect(window_rect)
+    # smiley_center = window_rect_to_smiley_center(window_rect)
+
+    grid_rect, mine_count_rect, smiley_center = window_to_key_features(window_rect)
+
+    #grid_image = get_image_opencv(grid_rect)
+    grid_image = np.array(ImageGrab.grab(grid_rect))
+
+    # cv2.imshow('grid image',grid_image)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows
+    # from IPython import embed;  embed()
 
     minesweeper_grid_pixel_width = 16
     W = int((grid_rect[2] - grid_rect[0]) / minesweeper_grid_pixel_width)
@@ -198,7 +349,9 @@ def board_define(game_board):
         'Remaining Mines' : remaining_mines,  #Number of undiscovered mines (all of them at start)
         'Remaining Unknowns' : W * H,
         'Move History' : [],
-        'Game State' : 1        #Game state variable, 1: in progress, 0: game over (win or lose) not sure if needed
+        'Game State' : 1,        #Game state variable, 1: in progress, 0: game over (win or lose) not sure if needed
+        'Grid Rect' : grid_rect,
+        'Smiley Loc' : smiley_center
     }
 
     tile = 0
@@ -211,7 +364,7 @@ def board_define(game_board):
             X_coord = W
         Y_coord = int((tile-1)/W)+1              #if x = 1, Y = 1. if x=10, Y = 1, if x=11, Y = 2
 
-        tile_coords = [(grid_rect[0] + (X_coord-1)*minesweeper_grid_pixel_width + int(minesweeper_grid_pixel_width/2)),(grid_rect[1] + (Y_coord-1)*minesweeper_grid_pixel_width + int(minesweeper_grid_pixel_width/2))]
+        tile_coords = [(grid_rect[0] + (X_coord-1)*minesweeper_grid_pixel_width + int(minesweeper_grid_pixel_width/2)), (grid_rect[1] + (Y_coord-1)*minesweeper_grid_pixel_width + int(minesweeper_grid_pixel_width/2))]
     
 
         #find ID's of adjacent squares
@@ -256,10 +409,16 @@ def board_define(game_board):
             'Adjacent Mines' : [],  #contains tile ID of known mines       
             'Edge' : edge,
             'Tile Coords' : tile_coords,
-            'Image' : get_tile_image(tile_coords)
+            'Image' : get_tile_image(tile_coords,grid_image,grid_rect)
             }
 
+    
+
         game_board.append(new_square)
+    
+    #debug tool
+    # refs = import_reference_images('Tiles')
+    # image_compare(game_board[1]['Image'],refs,True)
 
 
     return game_board
@@ -314,7 +473,12 @@ def mouse_click(tile_attributes,click_type = 'L'):
 
 def update_board(game_board):
     tile = 0 
-    print("Updating Board")
+    print("Updating Board")  
+    #Import Mine Count Reference Images
+    T_ref_images = import_reference_images('Tiles')
+
+    #Take snapshot of grid
+    grid_image = np.array(ImageGrab.grab(game_board[0]['Grid Rect']))
 
     while tile < (game_board[0]['Total Tiles']):
         tile += 1
@@ -322,8 +486,8 @@ def update_board(game_board):
         if game_board[tile]['Value'] == 'U': #Only update non-complete spaces
 
             #Update Value with image compare
-            new_tile_img = get_tile_image(game_board[tile]['Tile Coords']) #Get updated image of tile
-            new_tile_val, error = image_compare(new_tile_img, 'Tiles') #compare new image with refs to get val
+            new_tile_img = get_tile_image(game_board[tile]['Tile Coords'], grid_image,game_board[0]['Grid Rect']) #Get updated image of tile
+            new_tile_val, error = image_compare(new_tile_img, T_ref_images) #compare new image with refs to get val
 
             #print(f"{tile=} {new_tile_val}  {error}")
 
@@ -458,15 +622,6 @@ def debug(game_board):
 
 
 
-window_finder = MineSweeperWindowFinder()
-minesweeper_hwnd = window_finder.getMineSweeperWindowHandle()
-win32gui.SetForegroundWindow(minesweeper_hwnd)
-window_rect = win32gui.GetWindowRect(minesweeper_hwnd)
-grid_topleft, grid_bottomright, grid_rect = window_rect_to_grid_rect(window_rect)
-mine_count_rect = window_rect_to_mine_count_rect(window_rect)
-
-
-
 def main():
     game_board = [0]
 
@@ -560,9 +715,9 @@ __________Done_____________
 
 
 ___________________Notes__________________
--Old method time for mine count image compare = 0.12s
--Old method time for board definition = 16.3s
--Old method time for board update = 16.2s
+-Old method time for expert (30x16) mine count image compare = 0.12s
+-Old method time for expert (30x16) board definition = 16.3s
+-Old method time for expert (30x16) board update = 16.2s
 
 
 
